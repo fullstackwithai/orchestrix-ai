@@ -1,0 +1,8 @@
+{
+  "name": "AI Sales Proposal Automation",
+  "description": "Signature Orchestrix workflow.",
+  "input": {
+    "company": "Northstar Labs",
+    "budget": 18000
+  }
+}

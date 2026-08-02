@@ -1,0 +1,39 @@
+const state={workflow:null,selected:null,drag:null};
+const colors={trigger:'#2dd4bf',action:'#64748b',condition:'#3b82f6',ai_agent:'#7c5cff',human_approval:'#f59e0b',delay:'#14b8a6',webhook:'#ec4899',end:'#334155'};
+const paletteTypes=[
+ ['trigger','Trigger'],['action','Action'],['condition','Gateway'],['ai_agent','AI Agent'],
+ ['human_approval','Human Task'],['delay','Timer'],['webhook','Webhook'],['end','End']
+];
+
+async function api(path,options={}){const r=await fetch('/api'+path,{headers:{'Content-Type':'application/json',...(options.headers||{})},...options});if(!r.ok)throw new Error(await r.text());return r.json()}
+function el(id){return document.getElementById(id)}
+function esc(v){return String(v??'').replace(/[&<>"]/g,s=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[s]))}
+
+async function init(){
+ const health=await api('/health');el('mode').textContent=`${health.environment} · ${health.ai_mode}`;
+ renderPalette();await refreshDashboard();await loadWorkflow();bindNav();refreshRuns();refreshApprovals();refreshAudit();
+}
+function renderPalette(){el('palette').innerHTML=paletteTypes.map(([t,l])=>`<div class="palette-item" data-type="${t}"><span class="dot" style="background:${colors[t]}"></span><b>${l}</b></div>`).join('');document.querySelectorAll('.palette-item').forEach(x=>x.onclick=()=>addNode(x.dataset.type))}
+function bindNav(){document.querySelectorAll('.nav').forEach(btn=>btn.onclick=()=>{document.querySelectorAll('.nav,.view').forEach(x=>x.classList.remove('active'));btn.classList.add('active');el(btn.dataset.view).classList.add('active');el('title').textContent=btn.textContent;if(btn.dataset.view==='runs')refreshRuns();if(btn.dataset.view==='approvals')refreshApprovals();if(btn.dataset.view==='audit')refreshAudit()})}
+async function refreshDashboard(){const d=await api('/dashboard');el('metrics').innerHTML=[['Workflows',d.workflows],['Runs',d.runs],['Success',d.success_rate+'%'],['Approvals',d.pending_approvals],['Audit events',d.audit_events]].map(([a,b])=>`<div class="metric"><b>${b}</b><span>${a}</span></div>`).join('')}
+async function loadWorkflow(){const list=await api('/workflows');state.workflow=list[0];el('workflowName').textContent=state.workflow.name;el('workflowMeta').textContent=`v${state.workflow.active_version} · ${state.workflow.status}`;renderCanvas()}
+function renderCanvas(){
+ const def=state.workflow.definition;el('nodes').innerHTML=def.nodes.map(n=>`<div class="node ${n.type} ${state.selected===n.id?'selected':''}" data-id="${n.id}" style="left:${n.position.x}px;top:${n.position.y}px"><span class="type">${n.type.replaceAll('_',' ')}</span><strong>${esc(n.label)}</strong><small>${Object.keys(n.config||{}).length} config fields</small></div>`).join('');
+ document.querySelectorAll('.node').forEach(node=>{node.onmousedown=startDrag;node.onclick=e=>{e.stopPropagation();selectNode(node.dataset.id)}});
+ el('canvas').onclick=()=>{state.selected=null;renderInspector();renderCanvas()};
+ drawEdges()
+}
+function drawEdges(){const nodes=Object.fromEntries(state.workflow.definition.nodes.map(n=>[n.id,n]));el('edges').innerHTML=state.workflow.definition.edges.map(e=>{const a=nodes[e.source],b=nodes[e.target];if(!a||!b)return'';const x1=a.position.x+160,y1=a.position.y+37,x2=b.position.x,y2=b.position.y+37;const mx=(x1+x2)/2;return `<path d="M${x1} ${y1} C${mx} ${y1},${mx} ${y2},${x2} ${y2}" fill="none" stroke="#9aa8ba" stroke-width="2"/><circle cx="${x2}" cy="${y2}" r="3" fill="#6b56ea"/>`}).join('')}
+function startDrag(e){e.preventDefault();const id=e.currentTarget.dataset.id;state.drag={id,startX:e.clientX,startY:e.clientY,node:state.workflow.definition.nodes.find(n=>n.id===id)};state.drag.origin={...state.drag.node.position};document.onmousemove=moveDrag;document.onmouseup=endDrag}
+function moveDrag(e){if(!state.drag)return;state.drag.node.position.x=Math.max(0,state.drag.origin.x+e.clientX-state.drag.startX);state.drag.node.position.y=Math.max(0,state.drag.origin.y+e.clientY-state.drag.startY);renderCanvas()}
+function endDrag(){state.drag=null;document.onmousemove=null;document.onmouseup=null}
+function selectNode(id){state.selected=id;renderInspector();renderCanvas()}
+function renderInspector(){const n=state.workflow?.definition.nodes.find(x=>x.id===state.selected);if(!n){el('inspector').innerHTML='Select a workflow node to inspect its type, configuration, and governance role.';return}el('inspector').innerHTML=`<div class="field"><label>Label</label><b>${esc(n.label)}</b></div><div class="field"><label>Node type</label><code>${n.type}</code></div><div class="field"><label>Node ID</label><code>${n.id}</code></div><div class="field"><label>Configuration</label><code>${esc(JSON.stringify(n.config,null,2))}</code></div><div class="field"><label>Governance role</label><p>${n.type==='human_approval'?'Stops execution until a named human records an auditable decision.':n.type==='ai_agent'?'Produces bounded AI output while keeping the workflow state and evidence visible.':'Executes a deterministic process step.'}</p></div>`}
+function addNode(type){const id=`${type}_${Date.now()}`;state.workflow.definition.nodes.push({id,type,label:paletteTypes.find(x=>x[0]===type)[1],config:{},position:{x:80+Math.random()*500,y:80+Math.random()*380}});state.selected=id;renderCanvas();renderInspector()}
+async function saveWorkflow(){const w=state.workflow;const updated=await api(`/workflows/${w.id}`,{method:'PUT',body:JSON.stringify({name:w.name,description:w.description,status:w.status,definition:w.definition,change_note:'Canvas update from premium designer'})});state.workflow=updated;el('workflowMeta').textContent=`v${updated.active_version} · ${updated.status}`;alert(`Saved workflow version ${updated.active_version}`);refreshDashboard()}
+async function runWorkflow(){const input={company:'Northstar Labs',budget:18000,contact:'maya@example.com'};const result=await api(`/workflows/${state.workflow.id}/run`,{method:'POST',body:JSON.stringify({input})});alert(`Run #${result.id}: ${result.status}`);refreshDashboard();refreshRuns();refreshApprovals()}
+async function refreshRuns(){const rows=await api('/runs');el('runList').innerHTML=rows.length?rows.map(r=>`<div class="list-row"><b>#${r.id}</b><span>Workflow ${r.workflow_id} · v${r.version}</span><span class="status ${r.status}">${r.status}</span><span>${r.current_node||'—'}</span></div>`).join(''):'<div class="empty" style="padding:20px">No executions yet.</div>'}
+async function refreshApprovals(){const rows=await api('/approvals');el('approvalList').innerHTML=rows.length?rows.map(r=>`<div class="list-row"><b>#${r.id}</b><span><strong>${esc(r.title)}</strong><br><small>${esc(r.instructions)}</small></span><span class="status ${r.status}">${r.status}</span><span class="approval-actions">${r.status==='pending'?`<button class="approve" onclick="decide(${r.id},'approved')">Approve</button><button class="reject" onclick="decide(${r.id},'rejected')">Reject</button>`:''}</span></div>`).join(''):'<div class="empty" style="padding:20px">No approval tasks.</div>'}
+async function decide(id,decision){await api(`/approvals/${id}/decision`,{method:'POST',body:JSON.stringify({decision,actor:'Arsim Shefkiu',note:`Decision recorded in Orchestrix AI by DesignHubMK.`})});refreshApprovals();refreshRuns();refreshDashboard();refreshAudit()}
+async function refreshAudit(){const rows=await api('/audit');el('auditList').innerHTML=rows.length?rows.map(r=>`<div class="list-row"><b>#${r.id}</b><span><strong>${r.event_type}</strong><br><small>${esc(JSON.stringify(r.evidence))}</small></span><span>${r.actor}</span><span>${r.run_id?'Run '+r.run_id:'—'}</span></div>`).join(''):'<div class="empty" style="padding:20px">No audit events.</div>'}
+el('saveBtn').onclick=saveWorkflow;el('runBtn').onclick=runWorkflow;init().catch(e=>{console.error(e);alert('Orchestrix could not initialize: '+e.message)});

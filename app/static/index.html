@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Orchestrix AI — enterprise workflow automation and governed AI-agent orchestration by Arsim Shefkiu, DesignHubMK.">
+  <title>Orchestrix AI | Arsim Shefkiu · DesignHubMK</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div class="shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="logo">OX</div>
+        <div><strong>Orchestrix AI</strong><span>Automation Control Plane</span></div>
+      </div>
+      <nav>
+        <button class="nav active" data-view="designer">Workflow Designer</button>
+        <button class="nav" data-view="runs">Execution Runs</button>
+        <button class="nav" data-view="approvals">Human Approvals</button>
+        <button class="nav" data-view="audit">Audit Evidence</button>
+      </nav>
+      <div class="creator">
+        <span>Designed & built by</span>
+        <strong>Arsim Shefkiu</strong>
+        <a href="https://www.designhubmk.com" target="_blank" rel="noreferrer">www.designhubmk.com</a>
+      </div>
+    </aside>
+
+    <main>
+      <header class="topbar">
+        <div>
+          <span class="eyebrow">ENTERPRISE AUTOMATION</span>
+          <h1 id="title">Workflow Designer</h1>
+        </div>
+        <div class="top-actions">
+          <span id="mode" class="mode">Checking runtime…</span>
+          <button id="runBtn" class="primary">Run workflow</button>
+        </div>
+      </header>
+
+      <section id="metrics" class="metrics"></section>
+
+      <section id="designer" class="view active">
+        <div class="designer-grid">
+          <div class="palette panel">
+            <div class="panel-head"><h2>Node Library</h2><span>BPMN-inspired</span></div>
+            <div id="palette"></div>
+            <div class="hint">Click a node type to add it to the canvas. Drag nodes to reorganize the process.</div>
+          </div>
+          <div class="canvas-wrap panel">
+            <div class="panel-head">
+              <div>
+                <h2 id="workflowName">Loading workflow…</h2>
+                <span id="workflowMeta"></span>
+              </div>
+              <button id="saveBtn" class="secondary">Save new version</button>
+            </div>
+            <div id="canvas" class="canvas">
+              <svg id="edges"></svg>
+              <div id="nodes"></div>
+            </div>
+          </div>
+          <div class="inspector panel">
+            <div class="panel-head"><h2>Inspector</h2><span>Selected node</span></div>
+            <div id="inspector" class="empty">Select a workflow node to inspect its type, configuration, and governance role.</div>
+          </div>
+        </div>
+      </section>
+
+      <section id="runs" class="view"><div class="panel"><div class="panel-head"><h2>Execution Runs</h2><span>Queued, active, waiting, completed</span></div><div id="runList"></div></div></section>
+      <section id="approvals" class="view"><div class="panel"><div class="panel-head"><h2>Human Approval Queue</h2><span>Human-in-the-loop governance</span></div><div id="approvalList"></div></div></section>
+      <section id="audit" class="view"><div class="panel"><div class="panel-head"><h2>Audit Evidence</h2><span>Immutable execution narrative</span></div><div id="auditList"></div></div></section>
+    </main>
+  </div>
+  <script src="/static/app.js"></script>
+</body>
+</html>

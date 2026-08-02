@@ -1,0 +1,13 @@
+services:
+  orchestrix:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: sqlite:///./orchestrix.db
+      APP_ENV: docker
+    volumes:
+      - orchestrix-data:/app/data
+
+volumes:
+  orchestrix-data:
