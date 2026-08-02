@@ -61,3 +61,25 @@ def test_audit_contains_governance_events(client):
     event_types = {e["event_type"] for e in events}
     assert "approval.approved" in event_types
     assert "run.completed" in event_types
+
+
+def test_connector_registry(client):
+    connectors = client.get("/api/connectors").json()
+    keys = {item["key"] for item in connectors}
+    assert {"webhook", "postgresql", "openai"}.issubset(keys)
+
+
+def test_workflow_templates(client):
+    templates = client.get("/api/templates").json()
+    assert len(templates) >= 3
+    assert any(item["key"] == "security-incident" for item in templates)
+
+
+def test_ai_node_uses_governed_graph(client):
+    workflow_id = client.get("/api/workflows").json()[0]["id"]
+    result = client.post(
+        f"/api/workflows/{workflow_id}/run",
+        json={"input": {"company": "Graph Labs", "budget": 22000}},
+    ).json()
+    assert result["state"]["ai_mode"] == "offline-demo"
+    assert "qualification" in result["state"]
