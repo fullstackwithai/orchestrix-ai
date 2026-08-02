@@ -22,6 +22,8 @@ from app.schemas.workflows import (
 )
 from app.services.audit import record_event
 from app.services.engine import run_workflow
+from app.services.connectors import list_connectors
+from app.services.templates import list_templates
 
 router = APIRouter(prefix="/api")
 settings = get_settings()
@@ -70,6 +72,16 @@ def dashboard(db: Session = Depends(get_db)) -> dict:
         "pending_approvals": db.query(ApprovalTask).filter(ApprovalTask.status == "pending").count(),
         "audit_events": db.query(AuditEvent).count(),
     }
+
+
+@router.get("/connectors")
+def connectors() -> list[dict]:
+    return list_connectors()
+
+
+@router.get("/templates")
+def templates() -> list[dict]:
+    return list_templates()
 
 
 @router.get("/workspaces")
